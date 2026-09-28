@@ -69,6 +69,7 @@ no topo do ranking.
 import pytest
 import json
 import sys
+import io
 
 # Local: nosso próprio módulo. Extraímos as peças públicas sob teste —
 # a tabela de regras de prefixo, a dataclass de resultado e a função de entrada.
@@ -494,3 +495,110 @@ def test_main_json(monkeypatch, capsys):
     assert data["candidates"][0]["algorithm"] == "MD5"
     assert "confidence" in data["candidates"][0]
     assert "reason" in data["candidates"][0]
+
+def test_main_reads_hashes_from_file(monkeypatch, capsys, tmp_path):
+    hash_file = tmp_path / "hashes.txt"
+
+    hash_file.write_text(
+        "5f4dcc3b5aa765d61d8327deb882cf99\n"
+        "098f6bcd4621d373cade4e832627b4f6\n"
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "hashid",
+            "--file",
+            str(hash_file),
+        ],
+    )
+
+    exit_code = main()
+
+    captured = capsys.readouterr()
+    assert "5f4dcc3b5aa765d61d8327deb882cf99" in captured.out
+    assert "098f6bcd4621d373cade4e832627b4f6" in captured.out
+
+def test_main_reads_hashes_from_stdin(monkeypatch, capsys):
+    fake_stdin = io.StringIO(
+        "5f4dcc3b5aa765d61d8327deb882cf99\n"
+        "098f6bcd4621d373cade4e832627b4f6\n"
+    )
+
+    monkeypatch.setattr(sys, "stdin", fake_stdin)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["hashid"],
+    )
+
+    exit_code = main()
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "5f4dcc3b5aa765d61d8327deb882cf99" in captured.out
+    assert "098f6bcd4621d373cade4e832627b4f6" in captured.out
+
+def test_main_ignore_empty_line(monkeypatch, capsys, tmp_path) -> None:
+    hash_file = tmp_path / "hashes.txt"
+    hash_file.write_text(
+        "5f4dcc3b5aa765d61d8327deb882cf99\n"
+        "\n"
+        "   \n"
+        "098f6bcd4621d373cade4e832627b4f6\n"
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["hashid", "--file", str(hash_file)],
+    )
+
+    exit_code = main()
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "5f4dcc3b5aa765d61d8327deb882cf99" in captured.out
+    assert "098f6bcd4621d373cade4e832627b4f6" in captured.out
+    assert "Nenhuma identificação possível" not in captured.out
+
+def test_main_returns_error_when_no_input(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["hashid"])
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+
+    exit_code = main()
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Nenhum hash fornecido" in captured.out
+
+def test_main_one_line_em_lote(monkeypatch, capsys, tmp_path) -> None:
+    hash_file = tmp_path / "hashes.txt"
+    hash_file.write_text(
+        "5f4dcc3b5aa765d61d8327deb882cf99\n"
+        "098f6bcd4621d373cade4e832627b4f6\n"
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["hashid", "--file", str(hash_file)],
+    )
+
+    exit_code = main()
+    captured = capsys.readouterr()
+
+    output_lines = [
+        line.strip()
+        for line in captured.out.splitlines()
+        if line.strip()
+    ]
+
+    assert exit_code == 0
+    assert output_lines == [
+        "5f4dcc3b5aa765d61d8327deb882cf99: MD5 (medium)",
+        "098f6bcd4621d373cade4e832627b4f6: MD5 (medium)",
+    ]

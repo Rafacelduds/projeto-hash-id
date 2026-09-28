@@ -461,6 +461,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "hash",
+        nargs="?",
         help="A string de hash a identificar (envolva em aspas simples se contiver $).",
     )
     parser.add_argument(
@@ -470,7 +471,16 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         default=5,
         help="Mostra no máximo este número de candidatos (padrão: 5).",
     )
-    parser.add_argument("--json", action="store_true", help="...")
+    parser.add_argument(
+        "--json", 
+        action="store_true", 
+        help="Retorna um json"
+    )
+    parser.add_argument(
+        "--file",
+        type=argparse.FileType("r"),
+        help="Lê hashes de um arquivo"
+    )
     return parser
 
 def _render_table(
@@ -514,35 +524,69 @@ def main() -> int:
     args = parser.parse_args()
     console = Console()
 
-    candidates = identify(args.hash)
+    # candidates = identify(args.hash)
 
-    if not candidates:
-        console.print(
-            "[red]Nenhuma identificação possível.[/red] "
-            "A entrada não correspondeu a nenhum prefixo conhecido, formato especial "
-            "ou comprimento hexadecimal."
-        )
+    lote = False
+    hashes = []
+
+    if args.file:
+        lote = True
+        hashes = [
+                line.strip()
+                for line in args.file
+                if line.strip()
+            ]
+    elif args.hash:
+        hashes = [args.hash]
+    elif not sys.stdin.isatty():
+        lote = True
+        hashes = [
+                line.strip()
+                for line in sys.stdin
+                if line.strip()
+            ]
+    # print(hashes)
+
+    if not hashes:
+        console.print("[red]Nenhum hash fornecido.[/red]")
         return 1
 
-    # Limita aos top-N solicitados
-    trimmed = candidates[: args.top]
+    for hash_values in hashes:
+        candidates = identify(hash_values)
 
-    if args.json:
-        data = {
-            "input": args.hash,
-            "candidates": [asdict(candidate) for candidate in trimmed]
-        }
-        print(json.dumps(data, indent=2))
-        return 0
+        if not candidates:
+            console.print(
+                "[red]Nenhuma identificação possível.[/red] "
+                "A entrada não correspondeu a nenhum prefixo conhecido, formato especial "
+                "ou comprimento hexadecimal."
+            )
+            return 1
 
-    _render_table(args.hash, trimmed, console)
+        # Limita aos top-N solicitados
+        trimmed = candidates[: args.top]
 
-    # Dica útil — direciona o usuário para o cracker após a identificação.
-    if trimmed[0].confidence == "high":
-        console.print(
-            "\n[dim]Próximo passo: tente o modo de quebra correspondente "
-            "(veja ../../beginner/hash-cracker).[/dim]"
-        )
+        best_candidate = trimmed[0]
+
+        if args.json:
+            data = {
+                "input": hash_values,
+                "candidates": [asdict(candidate) for candidate in trimmed]
+            }
+            print(json.dumps(data, indent=2))
+            continue
+
+        if lote:
+            print(f"{hash_values}: {best_candidate.algorithm} ({best_candidate.confidence})")
+            continue
+
+        _render_table(hash_values, trimmed, console)
+
+        # Dica útil — direciona o usuário para o cracker após a identificação.
+        if trimmed[0].confidence == "high":
+            console.print(
+                "\n[dim]Próximo passo: tente o modo de quebra correspondente "
+                "(veja ../../beginner/hash-cracker).[/dim]"
+            )
 
     return 0
 
