@@ -602,3 +602,12 @@ def test_main_one_line_em_lote(monkeypatch, capsys, tmp_path) -> None:
         "5f4dcc3b5aa765d61d8327deb882cf99: MD5 (medium)",
         "098f6bcd4621d373cade4e832627b4f6: MD5 (medium)",
     ]
+
+def test_md5_candidate_hashcat_mode() -> None:
+    candidates = identify(
+        "5f4dcc3b5aa765d61d8327deb882cf99"
+    )
+
+    assert candidates
+    assert candidates[0].algorithm == "MD5"
+    assert candidates[0].hashcat_mode == 0
