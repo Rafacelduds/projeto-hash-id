@@ -62,7 +62,7 @@ import sys
 
 # Biblioteca padrão: um decorador que transforma uma classe em um registro de
 # dados pequeno e imutável sem escrever código repetitivo de `__init__`.
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 # Biblioteca padrão: uma dica de tipo que fixa um valor a um pequeno conjunto
 # fixo de strings (aqui: "high", "medium", "low"). O Mypy captura erros de digitação.
@@ -75,6 +75,8 @@ from rich.console import Console
 # Terceiros (rich): constrói a tabela ASCII colorida que imprimimos para
 # os candidatos a hash classificados.
 from rich.table import Table
+
+import json
 
 # =============================================================================
 # Tipo de Confiança — apenas três valores válidos
@@ -168,6 +170,7 @@ PREFIX_RULES: list[tuple[str, str, str]] = [
     ("{SMD5}", "LDAP SMD5", "MD5 com salt do LDAP (carga base64)"),
     ("{MD5}", "LDAP MD5", "MD5 do LDAP (carga base64)"),
     ("{CRYPT}", "LDAP CRYPT", "LDAP envolvendo um hash crypt(3)"),
+    ("$ml$", "macOS / iCloud Keychain", "Apple PBKDF2-SHA512"),
 ]
 
 
@@ -191,6 +194,7 @@ _HEX_UPPER_CHARSET: frozenset[str] = frozenset("0123456789ABCDEF")
 HEX_LENGTH_RULES: dict[int, list[str]] = {
     # 16 caracteres hex = 8 bytes = 64 bits. Saída do OLD_PASSWORD() do MySQL.
     16: ["MySQL323", "CRC-64"],
+    24: ["Tiger-128"],
     # 32 caracteres hex = 16 bytes = 128 bits
     32: ["MD5", "NTLM", "MD4", "RIPEMD-128"],
     # 40 caracteres hex = 20 bytes = 160 bits
@@ -466,8 +470,8 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         default=5,
         help="Mostra no máximo este número de candidatos (padrão: 5).",
     )
+    parser.add_argument("--json", action="store_true", help="...")
     return parser
-
 
 def _render_table(
     raw_input: str,
@@ -522,6 +526,15 @@ def main() -> int:
 
     # Limita aos top-N solicitados
     trimmed = candidates[: args.top]
+
+    if args.json:
+        data = {
+            "input": args.hash,
+            "candidates": [asdict(candidate) for candidate in trimmed]
+        }
+        print(json.dumps(data, indent=2))
+        return 0
+
     _render_table(args.hash, trimmed, console)
 
     # Dica útil — direciona o usuário para o cracker após a identificação.

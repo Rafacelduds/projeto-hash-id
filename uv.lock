@@ -79,6 +79,7 @@ name = "hash-identifier"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "pytest" },
     { name = "rich" },
 ]
 
@@ -95,6 +96,7 @@ dev = [
 requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.1.0" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=4.0.5" },
+    { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.12" },

@@ -448,3 +448,25 @@ def test_every_prefix_rule_is_recognized_with_high_confidence(
     assert candidates, f"nenhum candidato retornado para o prefixo `{prefix}`"
     assert candidates[0].algorithm == algorithm
     assert candidates[0].confidence == "high"
+
+def test_macoskeychain_prefix_is_recognized() -> None:
+    """
+    Strings macOS / iCloud Keychain começam com `$ml$`
+    """
+    # Formato PHC para Argon2id: $argon2id$v=<versao>$m=...,t=...,p=...$<salt>$<hash>
+    sample = "$ml$40000$a1b2c3d4e5f67890a1b2c3d4e5f67890$f8e7d6c5b4a39281f8e7d6c5b4a39281f8e7d6c5b4a39281f8e7d6c5b4a39281f8e7d6c5b4a39281f8e7d6c5b4a39281f8e7d6c5b4a39281f8e7d6c5b4a39281"
+    candidates = identify(sample)
+    # `any(...)` retorna True se pelo menos um elemento do iterável tornar a
+    # expressão interna verdadeira. Verificamos se PELO MENOS UM candidato
+    # é macOS / iCloud Keychain — usar any() em vez de [0] mantém o teste robusto se algum
+    # dia adicionarmos um segundo palpite ao mesmo prefixo.
+    assert any(c.algorithm == "macOS / iCloud Keychain" for c in candidates)
+
+def test_tiger128_length_returns_tiger128() -> None:
+    """
+    24 caracteres hex apontam para Tiger-128 primeiro
+    """
+    # `"a" * 64` é um atalho Python para repetir o caractere 'a' 64 vezes.
+    sample = "a" * 24
+    candidates = identify(sample)
+    assert candidates[0].algorithm == "Tiger-128"

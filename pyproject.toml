@@ -63,6 +63,7 @@ license = {text = "AGPL-3.0-or-later"}
 #
 # Apenas uma dependência de execução — a lógica de detecção é biblioteca padrão pura.
 dependencies = [
+    "pytest>=9.0.3",
     # rich: saída de terminal bonita — cores, tabelas, painéis.
     # Usado para renderizar os resultados da identificação como uma tabela limpa.
     "rich>=15.0.0",
