@@ -67,10 +67,12 @@ no topo do ranking.
 # Terceiros: o próprio executor de testes. Também precisamos importá-lo aqui
 # para podermos usar seu decorador `@pytest.mark.parametrize` abaixo.
 import pytest
+import json
+import sys
 
 # Local: nosso próprio módulo. Extraímos as peças públicas sob teste —
 # a tabela de regras de prefixo, a dataclass de resultado e a função de entrada.
-from hash_identifier import PREFIX_RULES, HashCandidate, identify
+from hash_identifier import PREFIX_RULES, HashCandidate, identify, main
 
 # =============================================================================
 # Correspondências de prefixo (alta confiança)
@@ -470,3 +472,25 @@ def test_tiger128_length_returns_tiger128() -> None:
     sample = "a" * 24
     candidates = identify(sample)
     assert candidates[0].algorithm == "Tiger-128"
+
+def test_main_json(monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "hashid",
+            "--json",
+            "5f4dcc3b5aa765d61d8327deb882cf99",
+        ],
+    )
+
+    exit_code = main()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert isinstance(data, dict)
+    assert data["candidates"][0]["algorithm"] == "MD5"
+    assert "confidence" in data["candidates"][0]
+    assert "reason" in data["candidates"][0]
