@@ -542,7 +542,7 @@ def test_main_reads_hashes_from_stdin(monkeypatch, capsys):
     assert "5f4dcc3b5aa765d61d8327deb882cf99" in captured.out
     assert "098f6bcd4621d373cade4e832627b4f6" in captured.out
 
-def test_main_ignore_empty_line(monkeypatch, capsys, tmp_path) -> None:
+def test_main_ignore_empty_line(monkeypatch, capsys, tmp_path):
     hash_file = tmp_path / "hashes.txt"
     hash_file.write_text(
         "5f4dcc3b5aa765d61d8327deb882cf99\n"
@@ -565,7 +565,7 @@ def test_main_ignore_empty_line(monkeypatch, capsys, tmp_path) -> None:
     assert "098f6bcd4621d373cade4e832627b4f6" in captured.out
     assert "Nenhuma identificação possível" not in captured.out
 
-def test_main_returns_error_when_no_input(monkeypatch, capsys) -> None:
+def test_main_returns_error_when_no_input(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["hashid"])
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
 
@@ -575,7 +575,7 @@ def test_main_returns_error_when_no_input(monkeypatch, capsys) -> None:
     assert exit_code == 1
     assert "Nenhum hash fornecido" in captured.out
 
-def test_main_one_line_em_lote(monkeypatch, capsys, tmp_path) -> None:
+def test_main_one_line_em_lote(monkeypatch, capsys, tmp_path):
     hash_file = tmp_path / "hashes.txt"
     hash_file.write_text(
         "5f4dcc3b5aa765d61d8327deb882cf99\n"
@@ -603,7 +603,7 @@ def test_main_one_line_em_lote(monkeypatch, capsys, tmp_path) -> None:
         "098f6bcd4621d373cade4e832627b4f6: MD5 (medium)",
     ]
 
-def test_md5_candidate_hashcat_mode() -> None:
+def test_md5_candidate_hashcat_mode():
     candidates = identify(
         "5f4dcc3b5aa765d61d8327deb882cf99"
     )
@@ -611,3 +611,34 @@ def test_md5_candidate_hashcat_mode() -> None:
     assert candidates
     assert candidates[0].algorithm == "MD5"
     assert candidates[0].hashcat_mode == 0
+
+def test_identifies_url():
+    result = identify("https://exemplo.com")
+
+    assert result
+    assert "URL" in result[0].algorithm
+    assert result[0].confidence == "low"
+
+
+def test_identifies_hex_0x():
+    result = identify("0x742d35Cc6634C0532925a3b844Bc454e4438f44e")
+
+    assert result
+    assert "Hexadecimal" in result[0].algorithm
+    assert result[0].confidence == "low"
+
+
+def test_identifies_base58():
+    result = identify("1BoatSLRHtKNngkdXEeobR76b53LETtpyT")
+
+    assert result
+    assert "Base58" in result[0].algorithm
+    assert result[0].confidence == "low"
+
+
+def test_identifies_base32():
+    result = identify("JBSWY3DPEHPK3PXP")
+
+    assert result
+    assert "Base32" in result[0].algorithm
+    assert result[0].confidence == "low"

@@ -444,6 +444,14 @@ def identify(raw_input: str) -> list[HashCandidate]:
                 reason='prefixo `eyJ` é o base64 de `{"` — JWT, não é um hash',
             )
         ]
+    if text.startswith(('http://', 'https://')):
+        return [
+            _make_candidate(
+                algorithm="URL (não é um hash)",
+                confidence="low",
+                reason="começa com `http://` ou `https://`, não é um hash"
+            )
+        ]
     if any(c in text for c in "+/=") and len(text) > 8:
         # Hashes hex NUNCA contêm `+`, `/`, ou `=`.
         return [
@@ -451,6 +459,30 @@ def identify(raw_input: str) -> list[HashCandidate]:
                 algorithm="Blob Base64 (não é um hash)",
                 confidence="low",
                 reason="contém caracteres exclusivos de base64 (`+`, `/`, `=`)",
+            )
+        ]
+    if text.startswith('0x'):
+        return [
+            _make_candidate(
+                algorithm="Hexadecimal (não é um hash)",
+                confidence="low",
+                reason="prefixo 0x é hexadecimal"
+            )
+        ]
+    if len(text) > 8 and all(c in '234567ABCDEFGHIJKLMNPQRSTUVWXYZ' for c in text):
+        return [
+            _make_candidate(
+                algorithm="Base32 (não é um hash)",
+                confidence="low",
+                reason="possui letras maiúsculas e números de 2 a 7"
+            )
+        ]
+    if len(text) > 8 and all(c in '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz' for c in text):
+        return [
+            _make_candidate(
+                algorithm="Base58 (não é um hash)",
+                confidence="low",
+                reason="todos os caracteres pertencem ao alfabeto base58"
             )
         ]
 
