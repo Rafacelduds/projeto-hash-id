@@ -489,6 +489,17 @@ def identify(raw_input: str) -> list[HashCandidate]:
     # ----- Passo 6: nada correspondeu -----
     return []
 
+def classify_field(field: str) -> str:
+    candidates = identify(field)
+
+    if candidates and "não é um hash" not in candidates[0].algorithm:
+        return "hash"
+    if field.isalpha():
+        return "usuário"
+    if field.isalnum() and len(field) <= 16:
+        return "salt"
+    return "lixo"
+
 
 # =============================================================================
 # CLI — argparse + uma tabela rich
@@ -527,6 +538,11 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         "--file",
         type=argparse.FileType("r"),
         help="Lê hashes de um arquivo"
+    )
+    parser.add_argument(
+        "--split",
+        action="store_true",
+        help="Separa informações delimitados por ':'"
     )
     return parser
 
@@ -569,6 +585,29 @@ def _render_table(
         )
     console.print(table)
 
+def _render_table_split(raw_input: str, console: Console) -> None:
+    table = Table(
+        title="Classificação dos campos",
+        title_style="bold_cyan"
+    )
+
+    table.add_column("posição", style="dim")
+    table.add_column("valor", style="bold white")
+    table.add_column("tipo")
+
+    fields = raw_input.split(':')
+
+    for position, field in enumerate(fields, start=1):
+        field = field.strip()
+        field_type = classify_field(field)
+
+        table.add_row(
+            str(position),
+            field,
+            field_type,
+        )
+    console.print(table)
+
 
 def main() -> int:
     """
@@ -603,6 +642,10 @@ def main() -> int:
         return 1
 
     for hash_values in hashes:
+        if args.split:
+            _render_table_split(hash_values, console)
+            continue
+
         candidates = identify(hash_values)
 
         if not candidates:

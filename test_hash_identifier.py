@@ -73,7 +73,7 @@ import io
 
 # Local: nosso próprio módulo. Extraímos as peças públicas sob teste —
 # a tabela de regras de prefixo, a dataclass de resultado e a função de entrada.
-from hash_identifier import PREFIX_RULES, HashCandidate, identify, main
+from hash_identifier import PREFIX_RULES, HashCandidate, identify, main, classify_field
 
 # =============================================================================
 # Correspondências de prefixo (alta confiança)
@@ -642,3 +642,17 @@ def test_identifies_base32():
     assert result
     assert "Base32" in result[0].algorithm
     assert result[0].confidence == "low"
+
+def test_split_bcrypt_record() -> None:
+    fields = "alice:$2b$12$EixZ...".split(":")
+
+    assert classify_field(fields[0]) == "usuário"
+    assert classify_field(fields[1]) == "hash"
+
+
+def test_split_md5_and_salt() -> None:
+    fields = "bob:5f4dcc3b5aa765d61d8327deb882cf99:salt123".split(":")
+
+    assert classify_field(fields[0]) == "usuário"
+    assert classify_field(fields[1]) == "hash"
+    assert classify_field(fields[2]) == "salt"
