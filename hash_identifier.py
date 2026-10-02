@@ -587,7 +587,7 @@ def _render_table(
 
 def _render_table_split(raw_input: str, console: Console) -> None:
     table = Table(
-        title="Classificação dos campos",
+        title=f"Classificação dos campos\n({raw_input})",
         title_style="bold_cyan"
     )
 
@@ -608,6 +608,15 @@ def _render_table_split(raw_input: str, console: Console) -> None:
         )
     console.print(table)
 
+def _render_line_split(raw_input: str) -> None:
+    fields = raw_input.split(':')
+    results = []
+
+    for field in fields:
+        field = field.strip()
+        field_type = classify_field(field)
+        results.append(f"{field} -> {field_type}")
+    return " | ".join(results)
 
 def main() -> int:
     """
@@ -643,7 +652,10 @@ def main() -> int:
 
     for hash_values in hashes:
         if args.split:
-            _render_table_split(hash_values, console)
+            if lote:
+                print(_render_line_split(hash_values))
+            else:
+                _render_table_split(hash_values, console)
             continue
 
         candidates = identify(hash_values)
