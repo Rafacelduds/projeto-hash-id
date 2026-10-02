@@ -103,8 +103,8 @@ def test_bcrypt_prefix_is_recognized() -> None:
     # Em seguida, verifica se o PRIMEIRO candidato (palpite de maior prioridade) é bcrypt.
     # `candidates[0]` é o primeiro item; `.algorithm` é o campo que verificamos.
     assert candidates[0].algorithm == "bcrypt"
-    # E a confiança deve ser "high" — correspondências de prefixo são definitivas.
-    assert candidates[0].confidence == "high"
+    # Prefixos conhecidos são a evidência mais forte disponível.
+    assert candidates[0].confidence == pytest.approx(0.95)
 
 
 def test_argon2id_prefix_is_recognized() -> None:
@@ -155,7 +155,7 @@ def test_apr1_prefix_is_recognized() -> None:
     sample = "$apr1$rsalt$mp7TYYDvbgvNCJN3JTd6q1"
     candidates = identify(sample)
     assert candidates[0].algorithm == "Apache MD5-crypt"
-    assert candidates[0].confidence == "high"
+    assert candidates[0].confidence == pytest.approx(0.95)
 
 
 # =============================================================================
@@ -178,9 +178,9 @@ def test_mysql5_format_is_recognized() -> None:
     sample = "*23AE809DDACAF96AF0FD78ED04B6A265E05AA257"
     candidates = identify(sample)
 
-    # MySQL5 é um formato definitivo, então esperamos confiança ALTA (high).
+    # MySQL5 é um formato especial forte.
     assert candidates[0].algorithm == "MySQL5"
-    assert candidates[0].confidence == "high"
+    assert candidates[0].confidence == pytest.approx(0.85)
 
 
 def test_mysql5_rejects_lowercase_body() -> None:
@@ -215,9 +215,9 @@ def test_netntlmv2_format_is_recognized() -> None:
     sample = "alice::CORP:1122334455667788:" + "a" * 32 + ":" + "b" * 64
     candidates = identify(sample)
 
-    # NetNTLMv2 é um formato definitivo — confiança ALTA (high).
+    # NetNTLMv2 possui uma estrutura especial forte.
     assert candidates[0].algorithm == "NetNTLMv2"
-    assert candidates[0].confidence == "high"
+    assert candidates[0].confidence == pytest.approx(0.85)
 
 
 def test_netntlmv1_format_is_recognized() -> None:
@@ -229,7 +229,7 @@ def test_netntlmv1_format_is_recognized() -> None:
     sample = "alice::CORP:" + "a" * 48 + ":" + "b" * 48 + ":1122334455667788"
     candidates = identify(sample)
     assert candidates[0].algorithm == "NetNTLMv1"
-    assert candidates[0].confidence == "high"
+    assert candidates[0].confidence == pytest.approx(0.85)
 
 
 def test_descrypt_format_is_recognized() -> None:
@@ -243,9 +243,8 @@ def test_descrypt_format_is_recognized() -> None:
     candidates = identify(sample)
 
     assert candidates[0].algorithm == "DES crypt"
-    # Confiança MÉDIA (medium) porque uma string de 13 caracteres nesse charset
-    # PODE tecnicamente ser outras coisas.
-    assert candidates[0].confidence == "medium"
+    # Comprimento e charset são compatíveis, mas não tornam o formato definitivo.
+    assert candidates[0].confidence == pytest.approx(0.60)
 
 
 # =============================================================================
@@ -266,7 +265,7 @@ def test_mysql323_length_returns_mysql323_first() -> None:
     # MySQL323 fica ACIMA de CRC-64 porque em um contexto de segurança,
     # o MySQL323 é de longe a fonte mais provável.
     assert candidates[0].algorithm == "MySQL323"
-    assert candidates[0].confidence == "medium"
+    assert candidates[0].confidence == pytest.approx(0.60)
 
 
 def test_md5_length_returns_md5_first() -> None:
@@ -281,7 +280,7 @@ def test_md5_length_returns_md5_first() -> None:
 
     # O principal candidato é MD5.
     assert candidates[0].algorithm == "MD5"
-    assert candidates[0].confidence == "medium"
+    assert candidates[0].confidence == pytest.approx(0.60)
 
     # NTLM deve aparecer na lista de candidatos como uma opção menos provável.
     algorithms = [c.algorithm for c in candidates]
@@ -345,7 +344,7 @@ def test_input_is_trimmed_of_whitespace() -> None:
 # =============================================================================
 # Passos 4 e 5 do identify(): quando nada nas tabelas anteriores dispara,
 # tentamos duas correspondências suaves — formato genérico de string PHC e
-# "isso parece um JWT / blob base64". Ambos retornam confiança BAIXA (low).
+# "isso parece um JWT / blob base64". Ambos retornam pontuação 0.30.
 
 
 def test_unknown_phc_string_falls_back_to_generic() -> None:
@@ -362,7 +361,7 @@ def test_unknown_phc_string_falls_back_to_generic() -> None:
     # A coluna de algoritmo deve dizer "PHC string (pbkdf2-sha512)".
     assert "PHC" in candidates[0].algorithm
     assert "pbkdf2-sha512" in candidates[0].algorithm
-    assert candidates[0].confidence == "low"
+    assert candidates[0].confidence == pytest.approx(0.30)
 
 
 def test_jwt_input_is_called_out_as_not_a_hash() -> None:
@@ -377,7 +376,7 @@ def test_jwt_input_is_called_out_as_not_a_hash() -> None:
 
     assert candidates
     assert "JWT" in candidates[0].algorithm
-    assert candidates[0].confidence == "low"
+    assert candidates[0].confidence == pytest.approx(0.30)
 
 
 def test_base64_blob_is_called_out_as_not_a_hash() -> None:
@@ -404,7 +403,7 @@ def test_hash_candidate_is_frozen() -> None:
     """
     candidate = HashCandidate(
         algorithm="MD5",
-        confidence="medium",
+        confidence=0.60,
         reason="test",
     )
 
@@ -434,13 +433,13 @@ def test_hash_candidate_is_frozen() -> None:
 
 
 @pytest.mark.parametrize("prefix,algorithm,_note", PREFIX_RULES)
-def test_every_prefix_rule_is_recognized_with_high_confidence(
+def test_every_prefix_rule_has_prefix_confidence(
     prefix: str,
     algorithm: str,
     _note: str,
 ) -> None:
     """
-    Cada entrada em PREFIX_RULES produz um candidato de ALTA confiança
+    Cada entrada em PREFIX_RULES produz um candidato com pontuação 0.95
     com o algoritmo correspondente quando seu prefixo está no início da entrada.
     """
     sample = prefix + "corpofakequenaoimporta"
@@ -450,7 +449,7 @@ def test_every_prefix_rule_is_recognized_with_high_confidence(
     # quebrado — falha com uma mensagem que nomeia o prefixo problemático.
     assert candidates, f"nenhum candidato retornado para o prefixo `{prefix}`"
     assert candidates[0].algorithm == algorithm
-    assert candidates[0].confidence == "high"
+    assert candidates[0].confidence == pytest.approx(0.95)
 
 def test_macoskeychain_prefix_is_recognized() -> None:
     """
@@ -599,8 +598,8 @@ def test_main_one_line_em_lote(monkeypatch, capsys, tmp_path):
 
     assert exit_code == 0
     assert output_lines == [
-        "5f4dcc3b5aa765d61d8327deb882cf99: MD5 (medium)",
-        "098f6bcd4621d373cade4e832627b4f6: MD5 (medium)",
+        "5f4dcc3b5aa765d61d8327deb882cf99: MD5 (0.60)",
+        "098f6bcd4621d373cade4e832627b4f6: MD5 (0.60)",
     ]
 
 def test_md5_candidate_hashcat_mode():
@@ -617,7 +616,7 @@ def test_identifies_url():
 
     assert result
     assert "URL" in result[0].algorithm
-    assert result[0].confidence == "low"
+    assert result[0].confidence == pytest.approx(0.30)
 
 
 def test_identifies_hex_0x():
@@ -625,7 +624,7 @@ def test_identifies_hex_0x():
 
     assert result
     assert "Hexadecimal" in result[0].algorithm
-    assert result[0].confidence == "low"
+    assert result[0].confidence == pytest.approx(0.30)
 
 
 def test_identifies_base58():
@@ -633,7 +632,7 @@ def test_identifies_base58():
 
     assert result
     assert "Base58" in result[0].algorithm
-    assert result[0].confidence == "low"
+    assert result[0].confidence == pytest.approx(0.30)
 
 
 def test_identifies_base32():
@@ -641,7 +640,7 @@ def test_identifies_base32():
 
     assert result
     assert "Base32" in result[0].algorithm
-    assert result[0].confidence == "low"
+    assert result[0].confidence == pytest.approx(0.30)
 
 def test_split_bcrypt_record() -> None:
     fields = "alice:$2b$12$EixZ...".split(":")
@@ -656,3 +655,23 @@ def test_split_md5_and_salt() -> None:
     assert classify_field(fields[0]) == "usuário"
     assert classify_field(fields[1]) == "hash"
     assert classify_field(fields[2]) == "salt"
+
+def test_prefix_has_high_score() -> None:
+    candidates = identify("$2b$12$EixZ...")
+
+    assert candidates
+    assert candidates[0].confidence == pytest.approx(0.95)
+
+
+def test_non_hash_has_low_score() -> None:
+    candidates = identify("https://exemplo.com")
+
+    assert candidates
+    assert candidates[0].confidence == pytest.approx(0.30)
+
+
+def test_md5_score_is_higher_than_other_candidates() -> None:
+    candidates = identify("5f4dcc3b5aa765d61d8327deb882cf99")
+
+    assert candidates[0].algorithm == "MD5"
+    assert candidates[0].confidence > candidates[1].confidence
