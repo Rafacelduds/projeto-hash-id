@@ -518,6 +518,7 @@ def test_main_reads_hashes_from_file(monkeypatch, capsys, tmp_path):
     captured = capsys.readouterr()
     assert "5f4dcc3b5aa765d61d8327deb882cf99" in captured.out
     assert "098f6bcd4621d373cade4e832627b4f6" in captured.out
+    assert exit_code == 0
 
 def test_main_reads_hashes_from_stdin(monkeypatch, capsys):
     fake_stdin = io.StringIO(
@@ -643,14 +644,14 @@ def test_identifies_base32():
     assert result[0].confidence == pytest.approx(0.30)
 
 def test_split_bcrypt_record() -> None:
-    fields = "alice:$2b$12$EixZ...".split(":")
+    fields = ["alice", "$2b$12$EixZ..."]
 
     assert classify_field(fields[0]) == "usuário"
     assert classify_field(fields[1]) == "hash"
 
 
 def test_split_md5_and_salt() -> None:
-    fields = "bob:5f4dcc3b5aa765d61d8327deb882cf99:salt123".split(":")
+    fields = ["bob", "5f4dcc3b5aa765d61d8327deb882cf99", "salt123"]
 
     assert classify_field(fields[0]) == "usuário"
     assert classify_field(fields[1]) == "hash"

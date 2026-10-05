@@ -56,6 +56,8 @@ O que este arquivo expõe
 # objeto amigável para não termos que fatiar `sys.argv` manualmente.
 import argparse
 
+import json
+
 # Biblioteca padrão: acesso a internos do interpretador — usamos para
 # escrever no stderr e sair do processo com um código de status específico.
 import sys
@@ -76,8 +78,6 @@ from rich.console import Console
 # os candidatos a hash classificados.
 from rich.table import Table
 
-import json
-
 # =============================================================================
 # Tipo de Confiança — apenas três valores válidos
 # =============================================================================
@@ -87,7 +87,7 @@ import json
 # Literals para conjuntos fixos pequenos.
 
 # Confidence = Literal["high", "medium", "low"]
-CrackDifficulty = Literal["trivial", "moderate", "high", "very_high"]
+CrackDifficulty = Literal["trivial", "moderate", "hard", "very_hard"]
 
 
 # =============================================================================
@@ -512,7 +512,10 @@ def identify(raw_input: str) -> list[HashCandidate]:
                 reason="prefixo 0x é hexadecimal"
             )
         ]
-    if len(text) > 8 and all(c in '234567ABCDEFGHIJKLMNPQRSTUVWXYZ' for c in text):
+    if len(text) > 8 and all(
+        c in '234567ABCDEFGHIJKLMNPQRSTUVWXYZ'
+        for c in text
+    ):
         return [
             _make_candidate(
                 algorithm="Base32 (não é um hash)",
@@ -520,7 +523,10 @@ def identify(raw_input: str) -> list[HashCandidate]:
                 reason="possui letras maiúsculas e números de 2 a 7"
             )
         ]
-    if len(text) > 8 and all(c in '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz' for c in text):
+    if len(text) > 8 and all(
+        c in '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+        for c in text
+    ):
         return [
             _make_candidate(
                 algorithm="Base58 (não é um hash)",
@@ -533,6 +539,7 @@ def identify(raw_input: str) -> list[HashCandidate]:
     return []
 
 def classify_field(field: str) -> str:
+    """Classifica um campo como hash, usuário, salt ou lixo."""
     candidates = identify(field)
 
     if candidates and "não é um hash" not in candidates[0].algorithm:
@@ -573,13 +580,13 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         help="Mostra no máximo este número de candidatos (padrão: 5).",
     )
     parser.add_argument(
-        "--json", 
-        action="store_true", 
+        "--json",
+        action="store_true",
         help="Retorna um json"
     )
     parser.add_argument(
         "--file",
-        type=argparse.FileType("r"),
+        type=argparse.FileType("r"), # pylint: disable=deprecated-class
         help="Lê hashes de um arquivo"
     )
     parser.add_argument(
@@ -664,7 +671,7 @@ def _render_table_split(raw_input: str, console: Console) -> None:
         )
     console.print(table)
 
-def _render_line_split(raw_input: str) -> None:
+def _render_line_split(raw_input: str) -> str:
     fields = raw_input.split(':')
     results = []
 
@@ -744,7 +751,10 @@ def main() -> int:
         _render_table(hash_values, trimmed, console)
 
         if best_candidate.hashcat_mode is not None:
-            console.print(f"\n[dim]Próximo passo: hashcat -m {best_candidate.hashcat_mode} -a 0 '{hash_values}' wordlist.txt[/dim]")
+            console.print(
+                f"\n[dim]Próximo passo: hashcat -m {best_candidate.hashcat_mode} "
+                f"-a 0 '{hash_values}' wordlist.txt[/dim]"
+            )
         elif trimmed[0].confidence > 0.8:
             console.print(
                 "\n[dim]Próximo passo: tente o modo de quebra correspondente "
