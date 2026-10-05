@@ -87,6 +87,7 @@ import json
 # Literals para conjuntos fixos pequenos.
 
 # Confidence = Literal["high", "medium", "low"]
+CrackDifficulty = Literal["trivial", "moderate", "high", "very_high"]
 
 
 # =============================================================================
@@ -120,6 +121,7 @@ class HashCandidate:
     confidence: float
     reason: str
     hashcat_mode: int | None = None
+    crack_difficulty: CrackDifficulty | None = None
 
 
 # =============================================================================
@@ -220,6 +222,38 @@ HASHCAT_MODES: dict[str, int] = {
     "bcrypt": 3200,
 }
 
+CRACK_DIFFICULTIES : dict[str, CrackDifficulty] = {
+    "MD5": "trivial",
+    "MD4": "trivial",
+    "NTLM": "trivial",
+    "SHA-1": "trivial",
+    "SHA-224": "trivial",
+    "SHA-256": "trivial",
+    "SHA-384": "trivial",
+    "SHA-512": "trivial",
+    "MySQL323": "trivial",
+    "MySQL5": "trivial",
+    "DES crypt": "trivial",
+
+    "MD5 crypt": "moderate",
+    "Apache MD5-crypt": "moderate",
+    "phpass": "moderate",
+    "Drupal 7 (SHA-512)": "moderate",
+
+    "bcrypt": "hard",
+    "SHA-256 crypt": "hard",
+    "SHA-512 crypt": "hard",
+    "Django PBKDF2-SHA256": "hard",
+    "Django PBKDF2-SHA1": "hard",
+
+    "Argon2id": "very_hard",
+    "Argon2i": "very_hard",
+    "Argon2d": "very_hard",
+    "Django Argon2": "very_hard",
+    "scrypt": "very_hard",
+    "yescrypt": "very_hard",
+}
+
 
 # =============================================================================
 # Auxiliares
@@ -282,6 +316,7 @@ def _make_candidate(algorithm: str, confidence: float, reason: str) -> HashCandi
         confidence=confidence,
         reason=reason,
         hashcat_mode=HASHCAT_MODES.get(algorithm),
+        crack_difficulty=CRACK_DIFFICULTIES.get(algorithm),
     )
 
 
@@ -576,6 +611,7 @@ def _render_table(
     )
     table.add_column("algoritmo", style="bold white", no_wrap=True)
     table.add_column("confiança", no_wrap=True)
+    table.add_column("dificuldade", no_wrap=True)
     table.add_column("modo hashcat", no_wrap=True)
     table.add_column("motivo", style="dim")
 
@@ -594,10 +630,12 @@ def _render_table(
         )
 
         color = _confidence_color(candidate.confidence)
-        
+        dificuldade = candidate.crack_difficulty or "não se aplica"
+
         table.add_row(
             candidate.algorithm,
             f"[{color}]{candidate.confidence:.2f}[/{color}]",
+            dificuldade,
             hashcat_mode,
             candidate.reason,
         )

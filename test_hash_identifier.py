@@ -675,3 +675,29 @@ def test_md5_score_is_higher_than_other_candidates() -> None:
 
     assert candidates[0].algorithm == "MD5"
     assert candidates[0].confidence > candidates[1].confidence
+
+def test_md5_crack_difficulty_is_trivial() -> None:
+    candidates = identify("5f4dcc3b5aa765d61d8327deb882cf99")
+
+    assert candidates[0].algorithm == "MD5"
+    assert candidates[0].crack_difficulty == "trivial"
+
+
+def test_bcrypt_crack_difficulty_is_hard() -> None:
+    candidates = identify("$2b$12$EixZ...")
+
+    assert candidates[0].algorithm == "bcrypt"
+    assert candidates[0].crack_difficulty == "hard"
+
+
+def test_argon2id_crack_difficulty_is_very_hard() -> None:
+    candidates = identify("$argon2id$v=19$m=65536,t=3,p=4$salt$hash")
+
+    assert candidates[0].algorithm == "Argon2id"
+    assert candidates[0].crack_difficulty == "very_hard"
+
+
+def test_non_hash_has_no_crack_difficulty() -> None:
+    candidates = identify("https://example.com")
+
+    assert candidates[0].crack_difficulty is None
