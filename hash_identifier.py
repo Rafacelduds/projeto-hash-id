@@ -216,10 +216,23 @@ HEX_LENGTH_RULES: dict[int, list[str]] = {
     128: ["SHA-512", "SHA3-512", "BLAKE2b-512", "Whirlpool"],
 }
 
-HASHCAT_MODES: dict[str, int] = {
+HASHCAT_MODES = {
     "MD5": 0,
     "SHA-1": 100,
+    "MySQL323": 200,
+    "MySQL5": 300,
+    "phpass": 400,
+    "MD5 crypt": 500,
+    "MD4": 900,
+    "NTLM": 1000,
+    "SHA-256": 1400,
+    "DES crypt": 1500,
+    "Apache MD5-crypt": 1600,
+    "SHA-512": 1700,
+    "SHA-512 crypt": 1800,
     "bcrypt": 3200,
+    "NetNTLMv1": 5500,
+    "NetNTLMv2": 5600,
 }
 
 CRACK_DIFFICULTIES : dict[str, CrackDifficulty] = {
